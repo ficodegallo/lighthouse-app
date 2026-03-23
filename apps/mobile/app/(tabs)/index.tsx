@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { Briefing } from '@lighthouse/shared';
 import { colors, typography, spacing } from '../../src/theme';
 import { useMemoryStore } from '../../src/store/memoryStore';
-import { api } from '../../src/services/api';
+import { api, ReminderItem } from '../../src/services/api';
 
 const SUGGESTED_QUESTIONS = [
   "What's happening today?",
@@ -35,14 +35,23 @@ export default function HomeScreen() {
 
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [briefingChecked, setBriefingChecked] = useState(false);
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
 
-  // Fetch today's memories and briefing on mount
+  // Fetch today's memories, briefing, and reminders on mount
   useEffect(() => {
     fetchMemories('Today');
     api.briefings.today()
       .then(setBriefing)
-      .catch(() => {}) // no briefing yet is fine
+      .catch(() => {})
       .finally(() => setBriefingChecked(true));
+    api.reminders.list()
+      .then((items) => setReminders(items.slice(0, 3)))
+      .catch(() => {});
+  }, []);
+
+  const handleAcknowledge = useCallback(async (id: string) => {
+    await api.reminders.acknowledge(id).catch(() => {});
+    setReminders((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
   const todayMemories = memories.filter((m) => m.horizon === 'Today');
@@ -109,6 +118,28 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.briefingCardArrow}>›</Text>
           </TouchableOpacity>
+        )}
+
+        {/* Upcoming Reminders */}
+        {reminders.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Reminders</Text>
+            {reminders.map((r) => (
+              <View key={r.id} style={reminderStyles.card}>
+                <View style={reminderStyles.cardLeft}>
+                  <Text style={reminderStyles.time}>{formatReminderTime(r.triggerAt)}</Text>
+                  <Text style={reminderStyles.message} numberOfLines={2}>{r.message}</Text>
+                </View>
+                <TouchableOpacity
+                  style={reminderStyles.ackBtn}
+                  onPress={() => handleAcknowledge(r.id)}
+                  hitSlop={8}
+                >
+                  <Text style={reminderStyles.ackBtnText}>Got it</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
         )}
 
         {/* Today's snapshot */}
@@ -204,6 +235,18 @@ export default function HomeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function formatReminderTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 0) return 'Now';
+  if (diffMin < 60) return `In ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `In ${diffH}h`;
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function typeColor(type: string): string {
@@ -436,5 +479,51 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.amber.DEFAULT,
     marginLeft: spacing[3],
+  },
+});
+
+const reminderStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing[4],
+    marginBottom: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.amber.DEFAULT,
+  },
+  cardLeft: {
+    flex: 1,
+  },
+  time: {
+    ...typography.caption,
+    color: colors.amber.dark,
+    fontWeight: '700',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: spacing[1],
+  },
+  message: {
+    ...typography.body,
+    color: colors.text.primary,
+    lineHeight: 22,
+    fontSize: 15,
+  },
+  ackBtn: {
+    backgroundColor: colors.amber.DEFAULT,
+    borderRadius: 20,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    marginLeft: spacing[3],
+  },
+  ackBtnText: {
+    ...typography.caption,
+    color: colors.text.inverse,
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

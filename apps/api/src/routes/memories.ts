@@ -19,6 +19,8 @@ const createMemorySchema = z.object({
   expiresAt: z.string().datetime().optional(),
   /** Summary override — if provided, skips AI summary generation */
   summary: z.string().max(500).optional(),
+  /** ISO datetime extracted by IntakeAgent — used to schedule reminders */
+  extractedDateTime: z.string().datetime().optional(),
   patientId: z.string().uuid().optional(),
 });
 
@@ -139,8 +141,43 @@ memoriesRouter.post('/', requireCaregiverAccess, async (req, res, next) => {
       },
     });
 
-    // Auto-create reminder for Event-type memories with an extracted date
-    // (Reminder scheduling wired fully in Sprint 5 — stub for now)
+    // Auto-create reminders for Event memories that have an extracted datetime
+    if (type === 'Event' && body.extractedDateTime) {
+      const eventTime = new Date(body.extractedDateTime);
+      if (!isNaN(eventTime.getTime()) && eventTime > new Date()) {
+        const reminderMessage = summary ?? body.content;
+
+        // 30-minute-before reminder
+        const thirtyMinBefore = new Date(eventTime.getTime() - 30 * 60 * 1000);
+        if (thirtyMinBefore > new Date()) {
+          await prisma.reminder.create({
+            data: {
+              memoryId: memory.id,
+              userId: patientId,
+              triggerAt: thirtyMinBefore,
+              type: 'appointment',
+              message: `30 minutes: ${reminderMessage}`,
+            },
+          });
+        }
+
+        // Day-before reminder for ThisWeek events
+        if (horizon === 'ThisWeek') {
+          const dayBefore = new Date(eventTime.getTime() - 24 * 60 * 60 * 1000);
+          if (dayBefore > new Date()) {
+            await prisma.reminder.create({
+              data: {
+                memoryId: memory.id,
+                userId: patientId,
+                triggerAt: dayBefore,
+                type: 'day_before',
+                message: `Tomorrow: ${reminderMessage}`,
+              },
+            });
+          }
+        }
+      }
+    }
 
     res.status(201).json({ success: true, data: memory });
   } catch (err) {

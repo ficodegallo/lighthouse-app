@@ -7,6 +7,18 @@ interface CareCircleMember {
   caregiver: { id: string; name: string; email: string };
 }
 
+export interface ReminderItem {
+  id: string;
+  memoryId: string;
+  userId: string;
+  triggerAt: string;
+  type: string;
+  status: string;
+  escalationLevel: number;
+  message: string;
+  createdAt: string;
+}
+
 const API_BASE = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3000';
 
 class ApiClient {
@@ -53,7 +65,7 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify({ content }),
       }),
-    create: (body: { content: string; type?: string; horizon?: string }) =>
+    create: (body: { content: string; type?: string; horizon?: string; summary?: string; extractedDateTime?: string }) =>
       this.request<Memory>('/api/memories', {
         method: 'POST',
         body: JSON.stringify(body),
@@ -98,8 +110,11 @@ class ApiClient {
 
   // Reminders
   reminders = {
+    list: () => this.request<ReminderItem[]>('/api/reminders'),
     acknowledge: (id: string) =>
       this.request<{}>(`/api/reminders/${id}/acknowledge`, { method: 'POST' }),
+    dismiss: (id: string) =>
+      this.request<{}>(`/api/reminders/${id}`, { method: 'DELETE' }),
   };
 
   // Caregivers

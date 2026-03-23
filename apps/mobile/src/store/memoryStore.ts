@@ -51,6 +51,7 @@ export const useMemoryStore = create<MemoryStore>((set, get) => ({
       type: draft.type,
       horizon: draft.horizon,
       summary: draft.summary,
+      extractedDateTime: draft.extractedDateTime,
     });
     // Prepend to local list
     set((state) => ({
