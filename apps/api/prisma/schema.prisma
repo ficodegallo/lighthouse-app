@@ -1,0 +1,211 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+enum MemoryType {
+  Event
+  Routine
+  LifeMemory
+  QuickNote
+  Person
+}
+
+enum Horizon {
+  Today
+  ThisWeek
+  Always
+}
+
+enum MemoryStatus {
+  active
+  archived
+  expired
+  flagged
+}
+
+enum UserRole {
+  patient
+  caregiver
+}
+
+enum CareCircleRole {
+  admin
+  contributor
+  viewer
+}
+
+enum ComplexityLevel {
+  full
+  simplified
+  audio_only
+}
+
+enum ReminderType {
+  appointment
+  medication
+  routine
+  day_before
+}
+
+enum ReminderStatus {
+  pending
+  delivered
+  acknowledged
+  escalated
+}
+
+model User {
+  id             String          @id @default(uuid())
+  cognitoId      String          @unique
+  name           String
+  email          String          @unique
+  role           UserRole
+  // Preferences stored as JSON
+  briefingTime   String          @default("07:30")
+  speechRate     Float           @default(0.85)
+  voiceId        String?
+  complexityLevel ComplexityLevel @default(full)
+  timezone       String          @default("America/New_York")
+  autoPlayAudio  Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Patient relationships
+  memories       Memory[]        @relation("PatientMemories")
+  briefings      Briefing[]
+  reminders      Reminder[]
+  persons        Person[]
+
+  // Care circle
+  careCircleAsPatient    CareCircle[] @relation("PatientCareCircle")
+  careCircleAsCaregiver  CareCircle[] @relation("CaregiverCareCircle")
+
+  auditLogs      AuditLog[]
+
+  @@index([cognitoId])
+  @@index([email])
+}
+
+model Memory {
+  id              String       @id @default(uuid())
+  userId          String
+  user            User         @relation("PatientMemories", fields: [userId], references: [id], onDelete: Cascade)
+  content         String
+  type            MemoryType
+  horizon         Horizon
+  summary         String
+  createdBy       String       // userId of who created it (patient or caregiver)
+  attributionLabel String?     // "Added by David" — shown in UI
+  status          MemoryStatus @default(active)
+  expiresAt       DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Vector embedding for semantic search (1536 dims = OpenAI/Claude embeddings)
+  embedding       Unsupported("vector(1536)")?
+
+  personLinks     MemoryPerson[]
+  reminders       Reminder[]
+
+  @@index([userId, status])
+  @@index([userId, horizon, status])
+  @@index([userId, type, status])
+  @@index([expiresAt])
+}
+
+model Person {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String?
+  photoUrl     String?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  memoryLinks  MemoryPerson[]
+
+  @@index([userId])
+}
+
+model MemoryPerson {
+  memoryId  String
+  personId  String
+  memory    Memory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  person    Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([memoryId, personId])
+}
+
+model Briefing {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime  @db.Date
+  fullText      String
+  sectionsJson  String    // JSON string of BriefingSection[]
+  audioUrl      String?   // S3 signed URL (refreshed on demand)
+  audioS3Key    String?   // Permanent S3 key for the audio file
+  deliveredAt   DateTime?
+  openedAt      DateTime?
+  audioPlayedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model CareCircle {
+  id           String         @id @default(uuid())
+  patientId    String
+  patient      User           @relation("PatientCareCircle", fields: [patientId], references: [id], onDelete: Cascade)
+  caregiverId  String
+  caregiver    User           @relation("CaregiverCareCircle", fields: [caregiverId], references: [id], onDelete: Cascade)
+  role         CareCircleRole @default(contributor)
+  inviteToken  String?        @unique
+  joinedAt     DateTime       @default(now())
+
+  @@unique([patientId, caregiverId])
+  @@index([caregiverId])
+}
+
+model Reminder {
+  id               String         @id @default(uuid())
+  memoryId         String
+  memory           Memory         @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  triggerAt        DateTime
+  type             ReminderType
+  status           ReminderStatus @default(pending)
+  escalationLevel  Int            @default(0)
+  message          String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([userId, status, triggerAt])
+  @@index([triggerAt, status])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String   // e.g. "memory.create", "briefing.read", "reminder.acknowledge"
+  resourceId String?  // ID of the affected resource
+  resourceType String? // e.g. "Memory", "Briefing"
+  actorId    String   // userId of who performed the action
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([actorId, createdAt])
+}

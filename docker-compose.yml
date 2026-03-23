@@ -1,0 +1,36 @@
+name: lighthouse
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lighthouse-db
+    environment:
+      POSTGRES_USER: lighthouse
+      POSTGRES_PASSWORD: lighthouse_dev
+      POSTGRES_DB: lighthouse_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lighthouse']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin for local DB inspection (dev only)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: lighthouse-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@lighthouse.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - '5050:80'
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:

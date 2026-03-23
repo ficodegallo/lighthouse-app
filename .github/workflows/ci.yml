@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build --workspace=packages/shared
+
+      - name: Typecheck all packages
+        run: npm run typecheck --workspaces --if-present
+
+  test-api:
+    name: API Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: lighthouse
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: lighthouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: "postgresql://lighthouse:testpassword@localhost:5432/lighthouse_test"
+      NODE_ENV: test
+      AWS_REGION: us-east-1
+      # Stub values for test — real secrets never in CI
+      AWS_COGNITO_USER_POOL_ID: us-east-1_TEST
+      AWS_COGNITO_CLIENT_ID: TEST_CLIENT_ID
+      ANTHROPIC_API_KEY: test-key
+      ELEVENLABS_API_KEY: test-key
+      AWS_S3_BUCKET: test-bucket
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build --workspace=packages/shared
+
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/api
+
+      - name: Run API tests
+        run: npm test --workspace=apps/api

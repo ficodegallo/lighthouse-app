@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Lighthouse",
+    "slug": "lighthouse",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F0F4F8"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "care.lighthouse.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Lighthouse uses your microphone to capture voice memories.",
+        "NSSpeechRecognitionUsageDescription": "Lighthouse transcribes your voice into memories.",
+        "NSLocationWhenInUseUsageDescription": "Lighthouse uses your location for location-aware reminders.",
+        "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#F5A623",
+          "sounds": ["./assets/sounds/chime.wav"]
+        }
+      ]
+    ],
+    "scheme": "lighthouse",
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
