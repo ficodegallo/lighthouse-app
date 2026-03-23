@@ -14,16 +14,19 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "care.lighthouse.app",
+      "buildNumber": "6",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Lighthouse uses your microphone to capture voice memories.",
         "NSSpeechRecognitionUsageDescription": "Lighthouse transcribes your voice into memories.",
         "NSLocationWhenInUseUsageDescription": "Lighthouse uses your location for location-aware reminders.",
+        "NSUserNotificationsUsageDescription": "Lighthouse sends you your morning briefing and appointment reminders.",
         "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
       }
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-sqlite",
       [
         "expo-notifications",
         {
@@ -31,9 +34,18 @@
           "color": "#F5A623",
           "sounds": ["./assets/sounds/chime.wav"]
         }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Lighthouse uses your microphone to capture voice memories."
+        }
       ]
     ],
     "scheme": "lighthouse",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"

@@ -1,5 +1,14 @@
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/theme';
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+function tabIcon(name: IoniconsName, focusedName: IoniconsName) {
+  return ({ color, focused }: { color: string; focused: boolean }) => (
+    <Ionicons name={focused ? focusedName : name} size={24} color={color} />
+  );
+}
 
 export default function TabLayout() {
   return (
@@ -33,6 +42,8 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarLabel: 'Home',
+          tabBarIcon: tabIcon('home-outline', 'home'),
+          tabBarAccessibilityLabel: 'Home tab',
         }}
       />
       <Tabs.Screen
@@ -40,6 +51,8 @@ export default function TabLayout() {
         options={{
           title: "Today's Briefing",
           tabBarLabel: 'Briefing',
+          tabBarIcon: tabIcon('sunny-outline', 'sunny'),
+          tabBarAccessibilityLabel: 'Morning briefing tab',
         }}
       />
       <Tabs.Screen
@@ -47,6 +60,8 @@ export default function TabLayout() {
         options={{
           title: 'My Memories',
           tabBarLabel: 'Memories',
+          tabBarIcon: tabIcon('book-outline', 'book'),
+          tabBarAccessibilityLabel: 'Memories tab',
         }}
       />
       <Tabs.Screen
@@ -54,6 +69,8 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarLabel: 'Settings',
+          tabBarIcon: tabIcon('settings-outline', 'settings'),
+          tabBarAccessibilityLabel: 'Settings tab',
         }}
       />
     </Tabs>

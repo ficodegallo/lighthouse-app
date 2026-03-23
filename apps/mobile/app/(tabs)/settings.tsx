@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { colors, typography, spacing } from '../../src/theme';
 import { api } from '../../src/services/api';
 
@@ -20,6 +21,7 @@ interface CareCircleMember {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const [members, setMembers] = useState<CareCircleMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -168,10 +170,19 @@ export default function SettingsScreen() {
           <SettingRow label="Text size" value="Large (18pt)" />
         </View>
 
-        {/* App info */}
+        {/* Legal */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
-          <SettingRow label="Version" value="0.1.0 (Sprint 3)" />
+          <SettingRow label="Version" value="1.0.0 (build 6)" />
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/privacy')}
+            accessibilityRole="button"
+            accessibilityLabel="Privacy Policy"
+          >
+            <Text style={styles.rowLabel}>Privacy Policy</Text>
+            <Text style={styles.rowChevron}>›</Text>
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -242,6 +253,10 @@ const styles = StyleSheet.create({
   rowValue: {
     ...typography.body,
     color: colors.text.secondary,
+  },
+  rowChevron: {
+    fontSize: 20,
+    color: colors.text.tertiary,
   },
   inviteForm: {
     backgroundColor: colors.surfaceSecondary,
