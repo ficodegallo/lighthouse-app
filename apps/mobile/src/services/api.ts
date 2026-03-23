@@ -76,6 +76,7 @@ class ApiClient {
   briefings = {
     today: () => this.request<Briefing>('/api/briefings/today'),
     list: () => this.request<Briefing[]>('/api/briefings'),
+    generate: () => this.request<Briefing>('/api/briefings/generate', { method: 'POST' }),
     trackAudioPlayed: (id: string) =>
       this.request<{}>(`/api/briefings/${id}/audio-played`, { method: 'POST' }),
   };
@@ -87,6 +88,11 @@ class ApiClient {
       this.request<User>('/api/users/register', {
         method: 'POST',
         body: JSON.stringify(body),
+      }),
+    registerPushToken: (token: string) =>
+      this.request<{}>('/api/users/me/push-token', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
       }),
   };
 

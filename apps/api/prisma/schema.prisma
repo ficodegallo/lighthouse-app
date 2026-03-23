@@ -74,6 +74,7 @@ model User {
   complexityLevel ComplexityLevel @default(full)
   timezone       String          @default("America/New_York")
   autoPlayAudio  Boolean         @default(true)
+  expoPushToken  String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 

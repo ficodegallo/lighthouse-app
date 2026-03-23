@@ -60,6 +60,23 @@ usersRouter.patch('/me/preferences', async (req, res, next) => {
   }
 });
 
+// POST /api/users/me/push-token — register Expo push token for notifications
+usersRouter.post('/me/push-token', async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { token } = z.object({ token: z.string().min(1) }).parse(req.body);
+
+    await prisma.user.update({
+      where: { id: authReq.userId },
+      data: { expoPushToken: token },
+    });
+
+    res.json({ success: true, data: {} });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/users/register — called after Cognito signup to create internal user record
 usersRouter.post('/register', async (req, res, next) => {
   try {

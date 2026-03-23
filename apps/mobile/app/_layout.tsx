@@ -1,11 +1,47 @@
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { useEffect } from 'react';
+import * as Notifications from 'expo-notifications';
 import { colors } from '../src/theme';
 import { FloatingMicButton } from '../src/components/FloatingMicButton';
+import { api } from '../src/services/api';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+async function registerPushToken() {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+    });
+  }
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+
+  try {
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    await api.users.registerPushToken(token);
+  } catch {
+    // Non-fatal — push notifications degrade gracefully
+  }
+}
 
 export default function RootLayout() {
+  useEffect(() => {
+    registerPushToken();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" backgroundColor={colors.background} />

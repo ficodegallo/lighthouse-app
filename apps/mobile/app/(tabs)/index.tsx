@@ -11,6 +11,8 @@ import {
   Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Briefing } from '@lighthouse/shared';
 import { colors, typography, spacing } from '../../src/theme';
 import { useMemoryStore } from '../../src/store/memoryStore';
 import { api } from '../../src/services/api';
@@ -23,6 +25,7 @@ const SUGGESTED_QUESTIONS = [
 
 export default function HomeScreen() {
   const greeting = getGreeting();
+  const router = useRouter();
   const { memories, fetchMemories } = useMemoryStore();
 
   const [question, setQuestion] = useState('');
@@ -30,9 +33,16 @@ export default function HomeScreen() {
   const [isQuerying, setIsQuerying] = useState(false);
   const answerOpacity = useRef(new Animated.Value(0)).current;
 
-  // Fetch today's memories on mount
+  const [briefing, setBriefing] = useState<Briefing | null>(null);
+  const [briefingChecked, setBriefingChecked] = useState(false);
+
+  // Fetch today's memories and briefing on mount
   useEffect(() => {
     fetchMemories('Today');
+    api.briefings.today()
+      .then(setBriefing)
+      .catch(() => {}) // no briefing yet is fine
+      .finally(() => setBriefingChecked(true));
   }, []);
 
   const todayMemories = memories.filter((m) => m.horizon === 'Today');
@@ -79,6 +89,27 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>{greeting}</Text>
           <Text style={styles.date}>{formatDate(new Date())}</Text>
         </View>
+
+        {/* Morning Briefing card */}
+        {briefingChecked && (
+          <TouchableOpacity
+            style={briefing ? styles.briefingCard : styles.briefingCardEmpty}
+            onPress={() => router.push('/(tabs)/briefing')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.briefingCardInner}>
+              <Text style={styles.briefingCardLabel}>
+                {briefing ? 'Morning Briefing' : 'Morning Briefing'}
+              </Text>
+              <Text style={styles.briefingCardTitle}>
+                {briefing
+                  ? (briefing.sections?.[0]?.content?.slice(0, 80) ?? 'Tap to read your briefing') + '...'
+                  : 'No briefing yet — tap to generate one'}
+              </Text>
+            </View>
+            <Text style={styles.briefingCardArrow}>›</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Today's snapshot */}
         <View style={styles.section}>
@@ -362,5 +393,48 @@ const styles = StyleSheet.create({
   answerLoadingText: {
     ...typography.body,
     color: colors.text.secondary,
+  },
+  briefingCard: {
+    backgroundColor: '#FFFBF0',
+    borderRadius: 16,
+    padding: spacing[4],
+    marginBottom: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.amber.light,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  briefingCardEmpty: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing[4],
+    marginBottom: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  briefingCardInner: {
+    flex: 1,
+  },
+  briefingCardLabel: {
+    ...typography.caption,
+    color: colors.amber.dark,
+    fontWeight: '700',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing[1],
+  },
+  briefingCardTitle: {
+    ...typography.body,
+    color: colors.text.primary,
+    lineHeight: 22,
+    fontSize: 15,
+  },
+  briefingCardArrow: {
+    fontSize: 24,
+    color: colors.amber.DEFAULT,
+    marginLeft: spacing[3],
   },
 });
